@@ -170,10 +170,10 @@ test('Codex small jobs: model rerouting is refused', async () => {
 
 test('Codex small jobs: a hung process times out and is removed from the registry', async () => {
   const s = await setup({ timeoutMs: 500 });
-  const conn = await s.f.next();
-  await conn.init();
+  // The deadline also covers startup: a busy Mac may kill the child before
+  // it connects. Waiting for that connection would turn a passed timeout
+  // into a minute-long test failure.
   const res = await s.result;
   assert.ok(!res.ok && res.timedOut);
-  await conn.closed;
   assert.deepEqual(s.registry.pids(), []);
 });

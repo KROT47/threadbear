@@ -1627,6 +1627,10 @@ left it alone for a while with nothing typed. The window stays where it is
 while it does: the new version opens the same thread underneath and takes
 over, so you shouldn't see it go.
 
+An app installed with local ad-hoc signing keeps that signing for updates.
+Adding a development certificate later doesn't make those updates ask for
+its private key.
+
 Whatever's typed in a message box and not sent is kept through a quit or a
 restart. A message you send while the runner is restarting waits under its
 bubble and goes once the new one is up. If one can't be sent, its words go

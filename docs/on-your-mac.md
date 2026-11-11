@@ -40,6 +40,8 @@ File references are where to look.
   only this Mac can reach them.
 - **Apps:** `~/Applications/Threadbear.app` and
   `~/Applications/Threadbear Runner.app`, both built and signed on your Mac.
+  The Mac app keeps ad-hoc signing for updates of an ad-hoc installed copy,
+  without asking for a development key just because one is now available.
   If you turn on the `gpuiApp` experiment and run
   `desktop/scripts/install-app.sh`, also `~/Applications/Threadbear GPUI.app`,
   which keeps its window and panel layout in `desktop-settings.json` and

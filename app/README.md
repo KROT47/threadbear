@@ -25,12 +25,14 @@ The scripts:
 - `build-app.sh` builds and stages `~/Applications/Threadbear.app` (or
   `THREADBEAR_APP_DIR`), swapping the old bundle out in two renames.
   `THREADBEAR_BUILD_CONFIGURATION=debug` for a debug build.
-- It signs with the first "Apple Development" identity in your keychain
-  (override with `THREADBEAR_SIGN_IDENTITY`), so the app keeps one identity
-  across rebuilds and notification permission sticks. Without one it signs ad
-  hoc and pins the designated requirement to the bundle id
-  `com.mikerosoft.threadbear`, because an ad hoc requirement is the binary's
-  hash and changes every build.
+- An installed ad-hoc copy keeps ad-hoc signing, including when an update
+  is staged as `.Threadbear.app.next`. Otherwise it uses the first "Apple
+  Development" identity in your keychain, or ad hoc when none exists.
+  `THREADBEAR_SIGN_IDENTITY` overrides that choice. Every ad-hoc signature,
+  including an explicit `-`, pins the designated requirement to the bundle
+  id `com.mikerosoft.threadbear`, so it stays stable across rebuilds.
+  Failure with a development identity remains an error; it never silently
+  falls back to ad hoc.
 - `restart.sh`, `kill.sh` and `install.sh` work like Token Stats'. `kill.sh`
   only matches the staged app's own binary path.
 - `icons/threadbear.png` becomes the app icon if it's there.

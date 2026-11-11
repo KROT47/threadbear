@@ -91,18 +91,30 @@ if [[ -f "$ICON_SOURCE" ]]; then
   rm -rf "$(dirname "$ICONSET")"
 fi
 
-# Sign with the first Apple Development identity so the app keeps the same
-# identity across rebuilds (notification and other privacy permissions
-# stick). Falls back to ad hoc; then the designated requirement is pinned to
-# the bundle id, because an ad hoc one is the binary's hash and changes on
-# every build.
-SIGN_IDENTITY="${THREADBEAR_SIGN_IDENTITY:-$({
-  security find-identity -v -p codesigning 2>/dev/null \
-    | awk '/"Apple Development:/ { print $2; exit }'
-} || true)}"
-SIGNING_REQUIREMENTS=()
+# Keep an ad-hoc install ad hoc: an available development key may belong to
+# another app, and using it during a background update asks for keychain
+# access. An explicit identity wins; a new install still picks the first
+# Apple Development identity when one is available.
+SIGNED_APP="$FINAL_DIR"
+if [[ "${FINAL_DIR##*/}" == ".$APP_NAME.app.next" ]]; then
+  SIGNED_APP="$(dirname "$FINAL_DIR")/$APP_NAME.app"
+fi
+SIGN_IDENTITY="${THREADBEAR_SIGN_IDENTITY:-}"
 if [[ -z "$SIGN_IDENTITY" ]]; then
-  SIGN_IDENTITY="-"
+  if [[ -e "$SIGNED_APP" ]] && codesign --display --verbose=2 "$SIGNED_APP" 2>&1 | grep '^Signature=adhoc$' >/dev/null; then
+    SIGN_IDENTITY="-"
+  else
+    SIGN_IDENTITY="$({
+      security find-identity -v -p codesigning 2>/dev/null \
+        | awk '/"Apple Development:/ { print $2; exit }'
+    } || true)"
+    SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+  fi
+fi
+SIGNING_REQUIREMENTS=()
+# An ad-hoc designated requirement otherwise pins the binary's hash and
+# changes every build. Pin it to the bundle id, including explicit "-".
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
   SIGNING_REQUIREMENTS=(--requirements "=designated => identifier \"$BUNDLE_ID\"")
 fi
 codesign --force --timestamp=none --sign "$SIGN_IDENTITY" \

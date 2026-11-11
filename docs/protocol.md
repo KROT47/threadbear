@@ -1502,6 +1502,13 @@ none, and only `client: "threadbear-mac"` counts). The runner keeps the
 last build it saw and the threads waiting, in `app-restart.json` in the
 data dir, so both outlast its own restarts.
 
+The staged Mac app keeps ad-hoc signing when the installed copy uses it.
+Finding an Apple Development certificate later must not make that copy's
+background updates request a private key. An explicit
+`THREADBEAR_SIGN_IDENTITY` still wins; ad-hoc signing always pins the
+designated requirement to the bundle identifier. A failure using a
+development identity remains a failure, rather than changing signing type.
+
 - `wait_for_app_restart` (`{ text? }`) puts the calling thread on the list,
   remembering the build running then. Asking again replaces its request.
 - An `end_turn` with `needs: "you"` whose asks mention "Restart to Update"
