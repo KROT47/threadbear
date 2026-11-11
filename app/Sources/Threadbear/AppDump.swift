@@ -86,6 +86,8 @@ struct AppDump: Encodable {
         var labReview: Bool?
         var privateFolders: [String]?
         var smallJobsPool: String?
+        /// The pool names offered by the Small jobs picker.
+        var smallJobsPools: [String] = []
     }
 
     struct ScheduleEditorInfo: Encodable {
@@ -687,7 +689,8 @@ struct AppDump: Encodable {
             settingsWindow: SettingsWindow.current?.isVisible == true ? SettingsWindowInfo(
                 tab: app.settingsTab.rawValue, appearance: UserDefaults.standard.string(forKey: AppAppearance.key) ?? "system",
                 defaultFolder: app.runnerSettings?.defaultCwd, keepAwake: app.runnerSettings?.keepAwake, labReview: app.runnerSettings?.labReview,
-                privateFolders: app.runnerSettings?.models.privateFolders, smallJobsPool: app.runnerSettings?.models.pool) : nil,
+                privateFolders: app.runnerSettings?.models.privateFolders, smallJobsPool: app.runnerSettings?.models.pool,
+                smallJobsPools: app.runnerSettings?.models.poolSupported == true ? app.claudePools.map(\.title) : []) : nil,
             librarian: app.librarian.map(LibrarianText.state),
             pools: app.usesPools ? app.pools.map { pool in
                 PoolInfo(id: pool.id, title: pool.title, logins: pool.accountIds, folders: pool.folders,

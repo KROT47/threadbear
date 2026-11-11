@@ -758,16 +758,16 @@ impl SettingsWindow {
                     None => icons::provider_mark(provider),
                 });
                 let label = match &set {
-                    Some(id) => pools.iter().find(|p| &p.0 == id).map_or_else(|| format!("{id}, which has no Claude login"), |p| p.1.clone()),
+                    Some(id) => pools.iter().find(|p| &p.0 == id).map_or_else(|| format!("{id}, which can't run small jobs"), |p| p.1.clone()),
                     None => "None".to_owned(),
                 };
                 let mut choices: Vec<(String, bool, Value)> = pools.iter().map(|(id, title, _, _)| (title.clone(), set.as_deref() == Some(id.as_str()), json!({ "models": { "pool": id } }))).collect();
                 choices.push(("None".into(), set.is_none(), json!({ "models": { "pool": Value::Null } })));
-                let menu = self.menu("settings-small-jobs", label, face, "Which pool's Claude logins write titles and do the librarian's work", choices, cx);
+                let menu = self.menu("settings-small-jobs", label, face, "Which pool writes titles and does the librarian's work", choices, cx);
                 sections.push(section(
                     "settings-small-jobs-section",
                     "Small jobs",
-                    "Titles and the librarian use Haiku on one of this pool's Claude logins, the one with the most room, and count towards its usage. When every login is out of room they wait. None turns them off.",
+                    "Titles and the librarian run on this pool. Claude uses Haiku for ordinary work and Opus for checks. Codex uses Luna at low effort and Sol at high effort for checks. Calls count towards the login's usage. None turns them off.",
                     "change this, or which model and effort new threads start on. Your agent edits them in runner.json.",
                     vec![row("Run on", menu, cx)],
                     cx,
@@ -1000,6 +1000,14 @@ impl Render for SettingsWindow {
 impl SettingsWindow {
     pub(crate) fn dump(&self, cx: &App) -> Value {
         let settings = self.app.upgrade().and_then(|a| a.read(cx).runner_settings.as_ref().map(RunnerSettings::decode));
+        let small_jobs_pools = self.app.upgrade().map(|app| {
+            let app = app.read(cx);
+            let providers = app.small_job_providers();
+            app.logins.pools.iter()
+                .filter(|pool| pool.account_ids.iter().any(|id| app.logins.account(id).is_some_and(|a| providers.iter().any(|p| p == a.provider_id()))))
+                .map(|pool| pool.title.clone())
+                .collect::<Vec<_>>()
+        }).unwrap_or_default();
         json!({
             "tab": self.tab.name(),
             "appearance": style::appearance().name(),
@@ -1008,6 +1016,7 @@ impl SettingsWindow {
             "labReview": settings.as_ref().map(|s| s.lab_review),
             "privateFolders": settings.as_ref().map(|s| s.private_folders.clone()),
             "smallJobsPool": settings.as_ref().and_then(|s| s.pool.clone()),
+            "smallJobsPools": if settings.as_ref().is_some_and(|s| s.pool_supported) { small_jobs_pools } else { Vec::new() },
         })
     }
 }

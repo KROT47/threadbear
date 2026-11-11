@@ -22,6 +22,7 @@ import type { CliResponse } from './claude-pool.ts';
 export type AskRequest = {
   account: Account;
   model?: string;
+  effort?: 'low' | 'high';
   system?: string;
   user: string;
   jsonSchema?: Record<string, unknown>;

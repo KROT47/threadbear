@@ -27,6 +27,7 @@ import { SAMPLE_THREADS } from '../../../runner/src/samples.ts';
 import { fileURLToPath } from 'node:url';
 import { reviewDraft, reviewReply, sameDraft } from '../../../runner/src/reviews.ts';
 import { authProof, isNonce, newNonce } from '../../../runner/src/rpc-auth.ts';
+import { providersForHello } from '../../../runner/src/providers.ts';
 
 // What a waiting (untrusted) demo patch gives once it's trusted, by file.
 const waitingPatchGives = new Map();
@@ -539,7 +540,7 @@ async function dispatch(client, method, p) {
           defaults: { ...defaults, poolId: undefined, accountId: 'claude-main', cwd: '/Users/bruce/dev/me/misc' }, clis, updates, pools: [] };
       }
       return {
-        runnerVersion, protocol: 1, accounts: publicAccounts(),
+        runnerVersion, protocol: 1, accounts: publicAccounts(), providers: providersForHello(['claude', 'codex']),
         defaults: oldRunner ? { ...defaults, poolId: undefined } : defaults, ...(oldRunner ? {} : { clis, updates, pools, experiments: ['moveToRunner', ...(process.env.TB_MOCK_DECISIONS ? ['projectDecisions'] : [])] }),
       };
     // Moving a thread to another runner (docs/protocol.md): a guess from

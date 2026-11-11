@@ -402,7 +402,7 @@ private struct ModelSettings: View {
             Form {
                 if settings.models.poolSupported {
                     SettingsSection("Small jobs",
-                                    about: "Titles and the librarian use Haiku on one of this pool's Claude logins, the one with the most room, and count towards its usage. When every login is out of room they wait. None turns them off.",
+                                    about: "Titles and the librarian run on this pool. Claude uses Haiku for ordinary work and Opus for checks. Codex uses Luna at low effort and Sol at high effort for checks. Calls count towards the login's usage. None turns them off.",
                                     ask: "change this, or which model and effort new threads start on. Your agent edits them in runner.json.") {
                         Picker("Run on", selection: poolBinding(settings)) {
                             ForEach(claudePools) { pool in
@@ -411,12 +411,12 @@ private struct ModelSettings: View {
                             // A pool deleted since it was picked, so the
                             // picker still says what's set.
                             if let id = settings.models.pool, !claudePools.contains(where: { $0.id == id }) {
-                                Label("\(id), which has no Claude login", systemImage: "exclamationmark.triangle").labelStyle(.titleAndIcon).tag(Optional(id))
+                                Label("\(id), which can't run small jobs", systemImage: "exclamationmark.triangle").labelStyle(.titleAndIcon).tag(Optional(id))
                             }
                             Divider()
                             Label("None", systemImage: "nosign").labelStyle(.titleAndIcon).tag(String?.none)
                         }
-                        .tip("Which pool's Claude logins write titles and do the librarian's work")
+                        .tip("Which pool writes titles and does the librarian's work")
                     }
                 }
 

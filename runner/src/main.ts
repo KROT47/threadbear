@@ -59,6 +59,7 @@ import { realClock } from './clock.ts';
 import { acquireLock } from './lock.ts';
 import { isDirectory, removeTempFiles } from './fsutil.ts';
 import { Models } from './models/index.ts';
+import { codexAsker } from './models/codex-oneshot.ts';
 import { SettingsService, modelMethods, settingsMethods } from './settings.ts';
 import { InstructionsStore, instructionsMethods } from './instructions.ts';
 import { ConvexSync, defaultRunnerName, ensureRunnerId, readSyncKey } from './sync.ts';
@@ -271,7 +272,7 @@ async function main(): Promise<void> {
       }),
     ]),
   );
-  // The runner's own small-model calls, on the settings' Claude pool.
+  // The runner's own small-model calls, on the selected pool.
   const models = new Models({
     home: cfg.home,
     clock: realClock,
@@ -279,7 +280,10 @@ async function main(): Promise<void> {
     settings: () => cfg.models,
     claudePath: cfg.claudePath,
     registry,
-    askers: Object.fromEntries(ACP_PROVIDERS.filter((p) => PROVIDER_INFO[p].smallJobs).map((p) => [p, acpAsker({ agent: ACP_AGENTS[p], binary: acpBinary(p), on: acpOn, registry, log })])),
+    askers: {
+      codex: codexAsker({ binary: () => updates.codexBinary(), on: () => experimentOn(cfg.home, 'codexSmallJobs'), registry, log }),
+      ...Object.fromEntries(ACP_PROVIDERS.filter((p) => PROVIDER_INFO[p].smallJobs).map((p) => [p, acpAsker({ agent: ACP_AGENTS[p], binary: acpBinary(p), on: acpOn, registry, log })])),
+    },
     poolHost: { pool: (id) => runner.smallModelPool(id), ranDry: (id) => runner.noteRanDry(id) },
   });
   const projects = new Projects({ home: cfg.home, clock: realClock, log });

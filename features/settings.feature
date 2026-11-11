@@ -29,3 +29,8 @@ Feature: Settings
     Then Settings lists the private folder "~/dev/clients/acme"
     When I press "Stop keeping this folder private" in Settings
     Then Settings lists no private folders
+
+  @settings.models
+  Scenario: Small jobs can run on the Codex pool
+    When I open Settings on "models"
+    Then Settings offers "Codex" for small jobs

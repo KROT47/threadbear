@@ -1,6 +1,6 @@
 // The runner's own small-model calls (docs/protocol.md, "Settings and
-// models"): classify, extract, summarize and generate, on one of the Claude
-// logins in a pool, through the official CLI. Features ask for a job, not
+// models"): classify, extract, summarize and generate, on one of the pool's
+// logins, through the official CLI. Features ask for a job, not
 // a model; ROUTES says which model answers it. A call never throws: a
 // failed one says why, and the feature falls back to what it did before
 // there was a model to ask.
@@ -57,10 +57,10 @@ type Common = { feature: string; cwd?: string };
 export type ClassifyParams = Common & { text: string; labels: string[]; instructions?: string };
 export type ExtractParams = Common & { text: string; fields: Record<string, string> };
 export type SummarizeParams = Common & { text: string; maxWords?: number };
-// strong: Opus (ROUTES.decide) rather than Haiku.
+// strong: Opus on Claude, Sol high on Codex.
 export type GenerateParams = Common & { prompt: string; system?: string; maxTokens?: number; strong?: boolean };
 
-// pool: the pool whose Claude logins answer; null for none (no small jobs).
+// pool: the pool whose supported logins answer; null for none (no small jobs).
 export type ModelSettings = { privateFolders: string[]; pool?: string | null };
 
 // What the Models layer needs of the runner.
@@ -84,7 +84,7 @@ export type ModelsOptions = {
   registry?: { add(pid: number, command: string): void; remove(pid: number): void };
   // Stands in for the CLI in tests.
   askCli?: AskCli;
-  // Who answers on a login that isn't Claude's: the ACP agents.
+  // Who answers on a login that isn't Claude's.
   askers?: Partial<Record<Provider, Asker>>;
   poolTimeoutMs?: number;
 };
@@ -137,9 +137,9 @@ export class Models {
   }
 
   // Why no call could go out at all, or undefined when one might: there's
-  // a pool with a Claude login. Room isn't checked; a call finds that out.
+  // a pool with a supported login. Room isn't checked; a call finds that out.
   unavailable(): string | undefined {
-    return this.poolLogins() ? undefined : 'Needs a Claude pool to run on';
+    return this.poolLogins() ? undefined : 'Needs a pool with a login for small jobs';
   }
 
   private poolLogins(): { pool: Pool; accounts: Account[] } | undefined {
@@ -222,20 +222,22 @@ export class Models {
   private async run<T>(job: ModelJob, p: Common, a: Attempt<T>): Promise<ModelResult<T>> {
     const s = this.opts.settings();
     if (p.cwd && isPrivate(p.cwd, s.privateFolders)) return { ok: false, reason: 'private', message: `${p.cwd} is a private folder.` };
-    const res = await this.viaPool(job, p, ROUTES[job], a);
+    const res = await this.viaPool(job, p, a);
     return 'skipped' in res ? res.skipped : res;
   }
 
   // One route: skipped with no pool or no login with room; else run on a
   // login, and on the next one if that says it's out of room.
-  private async viaPool<T>(job: ModelJob, p: Common, model: string, a: Attempt<T>): Promise<ModelResult<T> | { ok: false; skipped: Failure }> {
+  private async viaPool<T>(job: ModelJob, p: Common, a: Attempt<T>): Promise<ModelResult<T> | { ok: false; skipped: Failure }> {
     if (!this.poolLogins()) {
       const id = this.poolId();
-      return skip('no-pool', id === null ? 'Small jobs are on no pool.' : `No pool called ${id} has a Claude login.`);
+      return skip('no-pool', id === null ? 'Small jobs are on no pool.' : `No pool called ${id} has a login for small jobs.`);
     }
     // Before taking a slot: a pool nothing can answer on says so at once.
     const askable = this.providerToAsk();
     if (!askable || !this.askFor(askable)) return skip('off', 'Pool calls are off in this runner.');
+    const model = askable === 'codex' ? (job === 'decide' ? 'gpt-6.1-sol' : ASK_CODEX_MODEL) : ROUTES[job];
+    const effort = askable === 'codex' ? (job === 'decide' ? 'high' : 'low') : undefined;
     await this.acquirePool();
     try {
       const tried: string[] = [];
@@ -243,7 +245,7 @@ export class Models {
       for (;;) {
         // Read again each time round: the last call may have used up a login.
         const found = this.poolLogins();
-        if (!found) return skip('no-pool', 'The pool has no Claude login.');
+        if (!found) return skip('no-pool', 'The pool has no login for small jobs.');
         title = found.pool.title;
         const id = pickInPool(found.pool, found.accounts, { provider: askable, current: this.lastLogin, exclude: tried });
         const account = id ? found.accounts.find((x) => x.id === id) : undefined;
@@ -253,6 +255,7 @@ export class Models {
         const res: CliResponse = await this.askFor(askable)!({
           account,
           model,
+          ...(effort ? { effort } : {}),
           system: a.system,
           user: a.user,
           jsonSchema: a.jsonSchema?.schema,
@@ -265,6 +268,7 @@ export class Models {
           job,
           feature: p.feature,
           model,
+          ...(effort ? { effort } : {}),
           started,
           ok: res.ok && !unreadable,
           accountId: account.id,
@@ -299,6 +303,7 @@ export class Models {
   }
 
   private askFor(provider: Provider): Asker | undefined {
+    if (provider === 'codex') return this.opts.askers?.codex;
     if (provider !== 'claude') {
       const ask = this.opts.askers?.[provider];
       // ROUTES names Claude's models; the agent answers on its own default.

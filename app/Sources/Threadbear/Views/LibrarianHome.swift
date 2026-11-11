@@ -37,11 +37,11 @@ private struct LibrarianAbout: View {
         }
     }
 
-    static let more = "It files each thread in a project, writes down where the project's up to, and renames threads that have wandered off from their title. It takes a look after a thread's first message and when a turn ends, then catches up at most every 20 minutes while the thread keeps going. A catch-up after only a quick reply is skipped without asking the model. Each look is one short call to Haiku, not the model your threads use, on the Claude login with the most room in the Runs on pool, and counts towards its usage. It waits when they're all out of room, and threads in a private folder are never sent. A thread you take out of a project is never put back in it."
+    static let more = "It files each thread in a project, writes down where the project's up to, and renames threads that have wandered off from their title. It takes a look after a thread's first message and when a turn ends, then catches up at most every 20 minutes while the thread keeps going. A catch-up after only a quick reply is skipped without asking the model. Each look uses Haiku on Claude or Luna at low effort on Codex. Checks use Opus or Sol at high effort. They run on a login in the Runs on pool and count towards its usage. It waits when they're all out of room, and threads in a private folder are never sent. A thread you take out of a project is never put back in it."
 }
 
 /// What can be changed about the librarian, here rather than only in
-/// Settings: whether it's looking at all, and which pool's Claude logins
+/// Settings: whether it's looking at all, and which pool's logins
 /// it runs on. The pool is the runner's small-jobs setting, which titles
 /// share, so a change here shows in Settings › Models too.
 private struct LibrarianSettings: View {
@@ -73,17 +73,17 @@ private struct LibrarianSettings: View {
                             }
                             // What's set but can't take a look: None (from
                             // Settings), or a pool deleted since or with no
-                            // Claude login. Shown so the picker still says
+                            // login that can run small jobs. Shown so the picker still says
                             // what's set; not offered.
                             if let id = settings.models.pool, !app.claudePools.contains(where: { $0.id == id }) {
-                                Label("\(id), which has no Claude login", systemImage: "exclamationmark.triangle").labelStyle(.titleAndIcon).tag(Optional(id))
+                                Label("\(id), which can't run small jobs", systemImage: "exclamationmark.triangle").labelStyle(.titleAndIcon).tag(Optional(id))
                             } else if settings.models.pool == nil {
                                 Label("No pool", systemImage: "nosign").labelStyle(.titleAndIcon).tag(String?.none)
                             }
                         }
                         .labelsHidden()
                         .fixedSize()
-                        .tip("Which pool's Claude logins it uses, the one with the most room. It waits when they're all out of room. Titles use the same pool (Settings › Models)")
+                        .tip("Which pool it uses. It waits when every login is out of room. Titles use the same pool (Settings › Models)")
                     }
                 }
             }

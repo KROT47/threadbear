@@ -29,7 +29,7 @@ test('what Claude and Codex can each do', () => {
   assert.equal(PROVIDER_INFO.claude.autoMode, 'classifier');
   assert.equal(PROVIDER_INFO.codex.autoMode, 'asks');
   assert.equal(PROVIDER_INFO.claude.smallJobs, true);
-  assert.equal(PROVIDER_INFO.codex.smallJobs, false);
+  assert.equal(PROVIDER_INFO.codex.smallJobs, true);
   assert.equal(PROVIDER_INFO.claude.loginCommand, 'claude auth login');
   assert.equal(PROVIDER_INFO.codex.loginCommand, 'codex login');
 });
@@ -95,4 +95,11 @@ test('hello lists each provider this runner offers', () => {
   assert.deepEqual(providersForHello().map((p) => p.id), [...PROVIDERS]);
   const h = makeHarness(undefined, {}, { accounts: new FakeAccounts(withCodex()) });
   assert.deepEqual(h.runner.hello().providers.map((p) => p.name), ['Claude', 'Codex']);
+});
+
+test('Codex small jobs are only advertised with the experiment on', () => {
+  const h = makeHarness(undefined, {}, { accounts: new FakeAccounts(withCodex()) });
+  assert.equal(h.runner.hello().providers.find((p) => p.id === 'codex')?.smallJobs, false);
+  fs.writeFileSync(path.join(h.home, 'runner.json'), JSON.stringify({ experiments: { codexSmallJobs: true } }));
+  assert.equal(h.runner.hello().providers.find((p) => p.id === 'codex')?.smallJobs, true);
 });

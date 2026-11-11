@@ -9,6 +9,7 @@ export type UsageLine = {
   feature: string;
   job: string;
   model: string;
+  effort?: 'low' | 'high';
   ok: boolean;
   ms: number;
   inputTokens?: number;

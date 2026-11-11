@@ -154,7 +154,7 @@ type ProviderInfo = {
                         // it behaves like Ask (Codex)
   sandbox: boolean      // can run a sandboxed thread
   rewind: boolean       // can go back to an earlier message
-  smallJobs: boolean    // can run small jobs (titles, summaries)
+  smallJobs: boolean    // can run small jobs (titles, summaries); Codex needs codexSmallJobs
   usageReadings: boolean // reports how much room a login has
 }
 
@@ -1755,10 +1755,14 @@ it's a person's click in System Settings.
 The runner makes small model calls of its own (classify, extract,
 summarise, generate) for features like titles, the librarian and "wake
 when" (`src/models/`). Features ask for a job, not a model: `ROUTES` says
-which model answers it, Haiku for everything but `decide`, which is Opus.
-Every call runs on the official `claude` CLI on one of the Claude logins
-in the pool `models.pool` names: the same CLI and logins as threads, so
-it needs no key and costs nothing beyond the login's usage.
+which model answers it. On Claude, ordinary jobs use Haiku and `decide`
+(a generate with `strong`) uses Opus. On Codex, ordinary jobs use
+`gpt-6-luna` at low effort and `decide` uses `gpt-6.1-sol` at high effort.
+Calls use the official CLI on a login in the pool `models.pool` names:
+the same logins as threads, with no API key beyond the login's usage.
+Strong jobs never fall back to Luna. A limit tries another login of the
+same provider and model; when none can answer the feature keeps its
+existing failure behaviour, including handing an Auto approval to the user.
 
 There used to be OpenRouter as well, with a key, a daily budget and a
 spend to show. It went on 29 Oct 2026: every feature is Haiku or Opus,
@@ -1767,13 +1771,15 @@ older runner's `openRouterKey`, `dailyBudgetUsd`, `spentTodayUsd` and
 `spentMonthUsd` in `Settings.models` are ignored by clients, and
 `secrets/openrouter-key`, if there is one, is no longer read.
 
-- **Consent.** A call sends thread text to Anthropic on Mike's own login,
-  as the thread itself does.
+- **Consent.** A call sends thread text to the selected provider on the
+  user's own login, as the thread itself does.
 - **The pool.** `models.pool` in `runner.json` is a pool id, `"claude"`
   when it isn't set, or `null` for none, which turns titles and the
-  librarian off. Only its Claude logins are used. A call runs on the one
-  it ran on last while that's OK to run on (see Pools), else the one with
-  the most room. The CLI runs as `claude -p` at low effort in an empty
+  librarian off. Codex pools are available with the `codexSmallJobs`
+  experiment on. A mixed pool still prefers Claude; a Codex-only pool
+  selects Luna/Sol. There is no fallback between providers. A call runs on the one
+  it ran on last while that's OK to run on (see Pools), else the one the
+  pool would pick next. On Claude the CLI runs as `claude -p` at low effort in an empty
   folder (`models/cli` in the data dir), with no tools, MCP servers,
   settings, hooks, CLAUDE.md, skills or saved session (`--tools ""
   --strict-mcp-config --setting-sources "" --disable-slash-commands
@@ -1782,13 +1788,30 @@ older runner's `openRouterKey`, `dailyBudgetUsd`, `spentTodayUsd` and
   it's out of room counts as run dry, as it does for a turn, and the next
   one is tried. At most 2 calls run at once, and each times out after 60
   seconds.
+- **Codex.** The selected official `codex app-server` runs short-lived
+  ephemeral threads in an empty folder, on the existing login. The job's
+  base/developer instructions replace the coding prompt; environment roots,
+  dynamic tools and capability roots are empty. The temporary-request policy
+  disables built-in tools, skills, hooks, memories, plugins and apps, and
+  every configured MCP server is explicitly disabled (config maps merge).
+  Global instructions from the login's `AGENTS.md` may still load: Codex has
+  no supported per-thread switch for them, so the runner does not promise
+  their absence or copy credentials to another home. The thread must report
+  the requested model, OpenAI provider, ephemeral thread and read-only
+  sandbox before it gets any job text. Normal threads' extra `codexArgs`
+  are not inherited: `--enable` can override startup tool restrictions
+  regardless of argument order.
+  Classify/extract use `outputSchema`. No conversation is saved. Calls share
+  the same concurrency, timeout, private-folder and account-limit handling
+  as Claude. Turning the experiment off refuses further Codex calls.
 - **Private folders.** `models.privateFolders` in `runner.json` lists
   folders whose threads are never sent anywhere, for client work and the
   like. A call for a thread in one of them, or anywhere under one,
   doesn't go out.
 - **Usage.** Each call that goes out adds a line to `models/usage.ndjson`
   in the data dir: `{ ts, feature, job, model, ok, ms, inputTokens?,
-  outputTokens?, accountId?, notionalUsd?, error? }`. `notionalUsd` is
+  outputTokens?, accountId?, effort?, notionalUsd?, error? }`. `effort` records
+  the selected Codex route. `notionalUsd` is
   what the CLI says it would have cost on the API, which isn't spent. No
   text from the call is kept.
 - **Titles.** A new thread's title is the first line of its first
@@ -1798,7 +1821,7 @@ older runner's `openRouterKey`, `dailyBudgetUsd`, `spentTodayUsd` and
   names them too. Later, the librarian renames a thread whose title no
   longer says what it's about (see Projects).
 - **Failures.** A call never throws: it says why it didn't answer
-  (`no-pool`: no pool, or none of its logins is a Claude one; `no-room`:
+  (`no-pool`: no pool, or none of its logins supports small jobs; `no-room`:
   every login is out of room; `off`: this runner makes no model calls;
   private folder, timed out, error), and the feature falls back to what
   it did before there was a model to ask.

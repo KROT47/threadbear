@@ -30,7 +30,7 @@ export const PROVIDER_INFO: Record<Provider, ProviderInfo> = {
     autoMode: 'asks',
     sandbox: false,
     rewind: true,
-    smallJobs: false,
+    smallJobs: true,
     usageReadings: true,
   },
   // Over ACP (adapters/acp/): Auto behaves like Ask, and neither sandbox,
@@ -97,6 +97,8 @@ export function cliName(provider: string | undefined): string {
   return providerInfo(provider).cliName;
 }
 
-export function providersForHello(providers: readonly Provider[] = PROVIDERS): ProviderInfo[] {
-  return providers.map((p) => PROVIDER_INFO[p]);
+export function providersForHello(providers: readonly Provider[] = PROVIDERS, home?: string): ProviderInfo[] {
+  return providers.map((p) => p === 'codex' && home && !experimentOn(home, 'codexSmallJobs')
+    ? { ...PROVIDER_INFO[p], smallJobs: false }
+    : PROVIDER_INFO[p]);
 }

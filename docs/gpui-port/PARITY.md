@@ -196,7 +196,7 @@ Scenarios passing: Swift: 207 of 220, Mac: 208 of 220, Windows: 192 of 220, Linu
 |---|---|---|---|---|
 | `settings.window` Settings window | pass | pass | pending | pass |
 | `settings.general` General | pending | pass | pending | pass |
-| `settings.models` Models | pending | pass | pending | pass |
+| `settings.models` Models | partly | partly | pending | partly |
 
 ### 17. Navigation, shortcuts, main menu
 
@@ -304,8 +304,12 @@ built parsers and gates with no launch of the app, which is the trap.)
   Experiments, and the runner's version. A change shows at once, and one
   the runner turns down puts back what it had (unless something newer came)
   with its reason under the form.
-- Models: Small jobs' pool, with None and a set pool that has no Claude
+- Models: Small jobs' pool, with None and a set pool that has no supported
   login, and the private folders, with a minus on each and Add Folder….
+- Codex small jobs: with the experiment on, the pool picker includes Codex.
+  Its ordinary jobs use Luna low and strong jobs use Sol high. The new
+  `settings.models` scenario passes on Swift on 11 Nov; its GPUI run is
+  pending. Existing GPUI settings coverage remains as recorded above.
 - Not here yet: the ding (GPUI has no sound to play it with), the activity
   log (the GPUI app keeps none) and Quitting's question (it doesn't ask),
   and the Pools, Runners, Phone & browser and Keyboard sections, which say

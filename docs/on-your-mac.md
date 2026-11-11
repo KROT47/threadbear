@@ -228,16 +228,25 @@ File references are where to look.
   ran in `extra-updates.json` in the data folder.
   `THREADBEAR_CLI_UPDATES=off` stops all of this.
 - **Small model calls** (`runner/src/models/`): thread titles, filing
-  threads into projects (the librarian, every 5 minutes) and similar jobs
-  send short excerpts of your threads to `claude -p` on your own logins.
+  threads into projects (the librarian, catching up at most every 20 minutes)
+  and similar jobs send short excerpts of your threads to the official
+  CLI on your own logins in the pool selected in Settings › Models.
+  Claude uses `claude -p`, with Haiku for ordinary jobs and Opus for
+  stronger checks. With the `codexSmallJobs` experiment on and a Codex
+  pool selected, Codex uses GPT-6-Luna at low effort and GPT-6.1-Sol at
+  high effort for stronger jobs. These calls have no tools or MCP servers
+  and do not keep a saved conversation. Codex may still load the login's
+  global `AGENTS.md`; it omits project instructions and normal threads'
+  extra `codexArgs`. Threads in a private folder are
+  not sent. A stronger job never falls back to Luna.
   It also asks for a few search words for each thread, and threads from
   before that get them in batches of 15 (title, first message and last
   reply), every 2 minutes until each has some, once.
   When a project's notes pass 12,000 characters, the librarian sends them
   the same way to be rewritten shorter, and keeps the old notes in the
   data folder's `project-notes/` (the last 5 for each project).
-  Mike's publishing runner also sends commit messages to Opus through its
-  Claude pool when preparing a daily release, to write the plain-language release notes.
+  A publishing runner also sends commit messages to the selected pool's
+  stronger model when preparing a daily release, to write the plain-language release notes.
   The input includes subjects and bodies of merged commits, including pull requests.
   If that call fails, the signed release still goes out without notes.
 - **Housekeeping** (`runner/src/housekeeping.ts`): trims logs, deletes
@@ -323,7 +332,7 @@ File references are where to look.
 | Your other Macs, over ssh | yours | Only when you run `tb runner add <name> --ssh <host>` or `tb runner check --ssh <host>` on your first Mac: it reads that Mac's Threadbear `runner.json`, writes its id and the deployment's address there if it hasn't them, writes its new key into that Mac's `secrets/convex-key`, and looks whether that Mac has a deploy key, Convex panel keys or a Convex login (names only, never a key), through your own ssh setup with agent and port forwarding off (`runner/src/runner-keys.ts`). `tb runner audit` asks this Mac's runner for its threads' last seqs and your deployment for what the main key made. `tb runner rotate-owner` sets env vars on your deployment with your deploy key, and, if you give it a Convex team access token for that run (`CONVEX_TEAM_TOKEN`, never kept), asks api.convex.dev for the deployment's deploy keys (their names and dates) before it rotates. |
 | GitHub | Mike's repo | Release tags fetched every 6 hours; the fork at setup |
 | downloads.claude.ai, registry.npmjs.org | Anthropic, npm | CLI version checks and installs; `npm ci` |
-| Anthropic, OpenAI | yours | Your threads, through the official CLIs on your own logins. With the `cardReviewer` experiment on (off by default), an approval card in a thread on Auto, with the thread's first and latest messages, goes to Opus through the same CLI so it can decide in your place. Unless you turn off Settings > General > Code review (`"labReview": false`), a thread's code change, with your message and the agent's reply, goes to your other provider's CLI as a review thread, as if you'd started one (or a fresh session of the same provider, with no other login). After a turn fails because the API couldn't be reached, the runner itself opens (and straight away closes) a connection to api.anthropic.com or chatgpt.com on port 443, at most once a minute, until one opens and the thread carries on. Nothing is sent over it (`runner/src/net-probe.ts`). |
+| Anthropic, OpenAI | yours | Your threads and small jobs, through the official CLIs on your own logins. Small jobs use the pool in Settings › Models: Haiku/Opus on Claude, or Luna low/Sol high on Codex with `codexSmallJobs` on. With the `cardReviewer` experiment on (off by default), an approval card in a thread on Auto, with the thread's first and latest messages, goes to that pool's stronger model so it can decide in your place. Unless you turn off Settings > General > Code review (`"labReview": false`), a thread's code change, with your message and the agent's reply, goes to your other provider's CLI as a review thread, as if you'd started one (or a fresh session of the same provider, with no other login). After a turn fails because the API couldn't be reached, the runner itself opens (and straight away closes) a connection to api.anthropic.com or chatgpt.com on port 443, at most once a minute, until one opens and the thread carries on. Nothing is sent over it (`runner/src/net-probe.ts`). |
 | OpenCode's Zen (opencode.ai), models.dev, and whichever providers you've logged it into | theirs | Only with the `acpAgents` experiment on and a thread on OpenCode: that thread's prompts and tool output, through the official CLI, and small jobs' text when a pool of only OpenCode logins is picked for them in Settings |
 | Cursor (api2.cursor.sh) | theirs | Only with the `acpAgents` experiment on and a thread on Cursor: the same, on your own login |
 | Mike's push relay | Mike's | Only when a paired iPhone or Android phone gets a notification (an Android phone's goes on to Google's Firebase Cloud Messaging, from the relay). It's sent from your Convex deployment, not the Mac. The text is encrypted for the phone; the relay sees the device token and thread id (`convex/push.ts`, `docs/push-relay.md`). The first time, your deployment registers with it, giving its own address; the relay keeps that address and checks it by posting a one-time code back to your deployment's `/relay/verify` (`convex/http.ts`). |
